@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Residente - Portería Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body class="bg-[#111] font-sans text-white min-h-screen">
+
+    <div x-data="residentApp()" x-init="init()" class="max-w-xl mx-auto p-6 pb-20">
+
+        <!-- ======== PANTALLA DE LOGIN ======== -->
+        <template x-if="!loggedIn">
+            <div class="min-h-screen flex flex-col justify-center">
+                <div class="mb-12">
+                    <p class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-2">Portería Digital</p>
+                    <h1 class="text-5xl font-black uppercase tracking-tighter leading-none">Acceso<br>Residente</h1>
+                </div>
+
+                <form @submit.prevent="login()" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Email</label>
+                        <input
+                            type="email"
+                            x-model="loginForm.email"
+                            placeholder="casaXX@portero.local"
+                            required
+                            class="w-full bg-transparent border-2 border-white/20 focus:border-white outline-none px-4 py-4 font-bold text-sm uppercase tracking-widest transition-colors"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Password</label>
+                        <input
+                            type="password"
+                            x-model="loginForm.password"
+                            placeholder="••••••••"
+                            required
+                            class="w-full bg-transparent border-2 border-white/20 focus:border-white outline-none px-4 py-4 font-bold text-sm transition-colors"
+                        />
+                    </div>
+
+                    <template x-if="loginError">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/10 px-4 py-3" x-text="loginError"></p>
+                    </template>
+
+                    <button
+                        type="submit"
+                        :disabled="loginLoading"
+                        class="w-full bg-white text-black py-5 font-black uppercase tracking-widest text-sm hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mt-4"
+                    >
+                        <span x-show="!loginLoading">Ingresar</span>
+                        <span x-show="loginLoading" class="animate-pulse">Verificando...</span>
+                    </button>
+                </form>
+
+                <p class="mt-8 text-[10px] text-gray-600 uppercase font-bold tracking-widest text-center">
+                    Credenciales: casa01@portero.local … casa12@portero.local / Portero123!
+                </p>
+            </div>
+        </template>
+
+        <!-- ======== PANEL PRINCIPAL ======== -->
+        <template x-if="loggedIn">
+            <div>
+                <header class="flex justify-between items-center mb-12 border-b border-white/10 pb-6">
+                    <div>
+                        <h1 class="text-xl font-black uppercase tracking-tighter" x-text="'Mi Residencia · ' + houseLabel"></h1>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-1" x-text="connectionLabel"></p>
+                    </div>
+                    <div class="flex items-center gap-4">
+
+                        <!-- Tuerca config -->
+                        <button @click="configOpen = true" title="Configuración"
+                            class="text-gray-500 hover:text-white transition-colors p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+                        <button @click="logout()" class="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-white border border-white/10 hover:border-white/40 px-3 py-2 transition-colors">
+                            Salir
+                        </button>
+                    </div>
+                </header>
+
+                <!-- ======== MODAL CONFIG ======== -->
+                <template x-if="configOpen">
+                    <div class="fixed inset-0 z-50 flex items-end justify-center" @click.self="configOpen = false">
+                        <!-- Fondo oscuro -->
+                        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+                        <!-- Panel -->
+                        <div class="relative w-full max-w-xl bg-[#1a1a1a] border-t-2 border-white/10 p-8 pb-12">
+                            <div class="flex justify-between items-start mb-8">
+                                <div>
+                                    <p class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-1">Configuración</p>
+                                    <h2 class="text-2xl font-black uppercase tracking-tighter">Mi Perfil</h2>
+                                </div>
+                                <button @click="configOpen = false" class="text-gray-500 hover:text-white transition-colors mt-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="space-y-6">
+                                <!-- Nombre -->
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Nombre a mostrar</label>
+                                    <input
+                                        type="text"
+                                        x-model="configForm.name"
+                                        :placeholder="residentName || houseLabel"
+                                        maxlength="60"
+                                        class="w-full bg-transparent border-2 border-white/20 focus:border-white outline-none px-4 py-4 font-bold text-sm uppercase tracking-widest transition-colors"
+                                        @keydown.enter="updateName()"
+                                    />
+                                    <p class="text-[10px] text-gray-600 uppercase font-bold mt-2">El email de acceso no cambia.</p>
+                                </div>
+
+                                <template x-if="configError">
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/10 px-4 py-3" x-text="configError"></p>
+                                </template>
+                                <template x-if="configSuccess">
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-green-400 border border-green-500/30 bg-green-500/10 px-4 py-3" x-text="configSuccess"></p>
+                                </template>
+
+                                <button
+                                    @click="updateName()"
+                                    :disabled="configLoading || !configForm.name.trim()"
+                                    class="w-full bg-white text-black py-4 font-black uppercase tracking-widest text-sm hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    <span x-show="!configLoading">Guardar Nombre</span>
+                                    <span x-show="configLoading" class="animate-pulse">Guardando...</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <main>
+                    <!-- Notificación activa -->
+                    <template x-if="notification">
+                        <div class="bg-white text-black p-8 shadow-[12px_12px_0px_0px_rgba(255,255,255,0.1)] mb-12">
+                            <div class="mb-8">
+                                <span class="text-[10px] font-black bg-black text-white px-2 py-1 uppercase">Nueva Visita</span>
+                                <h2 class="text-4xl font-black mt-4 leading-none" x-text="notification.visitorName"></h2>
+                                <p class="text-lg text-gray-600 mt-2 font-bold uppercase tracking-tight" x-text="notification.reason"></p>
+                            </div>
+
+                            <div class="bg-black aspect-video flex items-center justify-center mb-8 relative overflow-hidden">
+                                <template x-if="verCamara">
+                                    <img :src="`${API_BASE}/api/camera/stream`" alt="Cámara Pasillo" class="w-full h-full object-cover">
+                                </template>
+                                <span x-show="!verCamara" class="text-[10px] font-bold text-gray-700 uppercase tracking-widest">Camara Off</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4">
+                                <button @click="verCamara = !verCamara" class="border-2 border-black py-4 font-black uppercase tracking-widest hover:bg-gray-100 transition-colors">
+                                    <span x-text="verCamara ? 'Cerrar Camara' : 'Ver Camara'"></span>
+                                </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button @click="aceptar()" class="bg-black text-white py-6 font-black uppercase tracking-widest hover:bg-gray-800 transition-colors">Aceptar</button>
+                                    <button @click="ignorar()" class="border-2 border-black py-6 font-black uppercase tracking-widest hover:bg-gray-100 transition-colors text-gray-400">Ignorar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Historial -->
+                    <section>
+                        <div class="flex justify-between items-center mb-8">
+                            <h3 class="text-xs font-black uppercase tracking-[0.2em] text-gray-500">Historial de Visitas</h3>
+                            <div class="h-px flex-1 bg-white/10 mx-4"></div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <template x-for="log in history" :key="log.id">
+                                <div class="group border border-white/5 p-4 hover:bg-white/5 transition-colors flex justify-between items-center">
+                                    <div>
+                                        <p class="font-bold uppercase text-sm tracking-tight" x-text="log.visitorName"></p>
+                                        <p class="text-[10px] text-gray-500 uppercase font-bold">
+                                            <span x-text="log.reason"></span>
+                                            <span class="mx-1">/</span>
+                                            <span x-text="log.status"></span>
+                                        </p>
+                                    </div>
+                                    <div class="text-[10px] font-mono text-gray-600 group-hover:text-gray-400" x-text="log.timestamp"></div>
+                                </div>
+                            </template>
+
+                            <template x-if="history.length === 0">
+                                <div class="py-10 text-center border border-dashed border-white/10 text-gray-600 text-[10px] uppercase font-bold">
+                                    No hay registros en la base de datos
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </template>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5166';
+        const STORAGE_KEY = 'portero_token';
+
+        // Decodifica el payload del JWT sin librerías externas
+        function decodeJwt(token) {
+            try {
+                const payload = token.split('.')[1];
+                return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+            } catch {
+                return null;
+            }
+        }
+
+        function residentApp() {
+            return {
+                // Estado de auth
+                loggedIn: false,
+                loginForm: { email: '', password: '' },
+                loginError: '',
+                loginLoading: false,
+                token: null,
+
+                // Estado de la app
+                houseId: null,
+                houseLabel: '',
+                residentName: '',
+                notification: null,
+                verCamara: false,
+                history: [],
+                connectionLabel: 'Conectando...',
+                connected: false,
+                signalrConn: null,
+
+                // Config
+                configOpen: false,
+                configForm: { name: '' },
+                configError: '',
+                configSuccess: '',
+                configLoading: false,
+
+                init() {
+                    // Restaurar sesión si ya hay token guardado
+                    const saved = sessionStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        this.token = saved;
+                        this.houseId = sessionStorage.getItem('portero_houseId');
+                        this.houseLabel = sessionStorage.getItem('portero_houseLabel') || '';
+                        this.loggedIn = true;
+                        this.$nextTick(() => this.connectSignalR());
+                    }
+                },
+
+                async login() {
+                    this.loginError = '';
+                    this.loginLoading = true;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/auth/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.loginForm)
+                        });
+
+                        if (!res.ok) {
+                            const err = await res.text();
+                            this.loginError = err || 'Credenciales incorrectas';
+                            return;
+                        }
+
+                        const data = await res.json();
+                        // El response tiene: accessToken, houseId, houseLabel, residentName, expiresAtUtc
+                        this.token = data.accessToken;
+                        this.houseId = data.houseId;
+                        this.houseLabel = data.houseLabel || `Casa ${data.residentName}`;
+                        sessionStorage.setItem(STORAGE_KEY, this.token);
+                        sessionStorage.setItem('portero_houseId', this.houseId);
+                        sessionStorage.setItem('portero_houseLabel', this.houseLabel);
+
+                        this.loggedIn = true;
+                        this.$nextTick(() => this.connectSignalR());
+
+                    } catch (e) {
+                        this.loginError = 'No se pudo conectar al servidor.';
+                        console.error(e);
+                    } finally {
+                        this.loginLoading = false;
+                    }
+                },
+
+                extractHouseFromPayload(payload) {
+                    // El claim puede venir como 'houseId' o con el namespace completo
+                    const houseId =
+                        payload['houseId'] ||
+                        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/houseId'] ||
+                        Object.entries(payload).find(([k]) => k.toLowerCase().includes('house'))?.[1];
+
+                    this.houseId = houseId;
+                    // Extraer número de casa del email (casa01 → Casa 1)
+                    const email = payload['email'] ||
+                        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
+                        payload['sub'] || '';
+                    const match = email.match(/casa(\d+)/i);
+                    this.houseLabel = match ? `Casa ${parseInt(match[1])}` : email;
+                },
+
+                async connectSignalR() {
+                    await this.fetchHistory();
+
+                    this.signalrConn = new signalR.HubConnectionBuilder()
+                        .withUrl(`${API_BASE}/hubs/resident-notifications`, {
+                            accessTokenFactory: () => this.token
+                        })
+                        .withAutomaticReconnect()
+                        .build();
+
+                    this.signalrConn.on('ReceiveNotification', async (data) => {
+                        this.notification = data;
+                        await this.fetchHistory();
+                    });
+
+                    this.signalrConn.onreconnecting(() => {
+                        this.connected = false;
+                        this.connectionLabel = 'Reconectando...';
+                    });
+
+                    this.signalrConn.onreconnected(() => {
+                        this.connected = true;
+                        this.connectionLabel = `Conectado · ${this.houseLabel}`;
+                    });
+
+                    await this.signalrConn.start();
+                    await this.signalrConn.invoke('JoinHouseGroup', this.houseId);
+
+                    this.connected = true;
+                    this.connectionLabel = `Conectado · ${this.houseLabel}`;
+                },
+
+                async fetchHistory() {
+                    if (!this.houseId) return;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/visits/history/${this.houseId}`, {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+                        if (res.ok) {
+                            this.history = await res.json();
+                        }
+                    } catch (e) {
+                        console.error('Error cargando historial', e);
+                    }
+                },
+
+                aceptar() {
+                    this.notification = null;
+                    this.verCamara = false;
+                },
+                ignorar() {
+                    this.notification = null;
+                    this.verCamara = false;
+                },
+
+                async logout() {
+                    if (this.signalrConn) {
+                        await this.signalrConn.stop();
+                    }
+                    sessionStorage.removeItem(STORAGE_KEY);
+                    sessionStorage.removeItem('portero_houseId');
+                    sessionStorage.removeItem('portero_houseLabel');
+                    this.loggedIn = false;
+                    this.token = null;
+                    this.houseId = null;
+                    this.houseLabel = '';
+                    this.history = [];
+                    this.notification = null;
+                    this.loginForm = { email: '', password: '' };
+                    this.connectionLabel = 'Conectando...';
+                    this.connected = false;
+                },
+
+                async updateName() {
+                    const name = this.configForm.name.trim();
+                    if (!name) return;
+
+                    this.configError = '';
+                    this.configSuccess = '';
+                    this.configLoading = true;
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/mobile/me/name`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.token}`
+                            },
+                            body: JSON.stringify({ name })
+                        });
+
+                        if (!res.ok) {
+                            let detail = '';
+                            try { const e = await res.json(); detail = e.detail || e.title || ''; } catch {}
+                            this.configError = `Error ${res.status}${detail ? ': ' + detail : ' - No se pudo guardar el nombre.'}`;
+                            return;
+                        }
+
+                        const data = await res.json();
+                        // Actualizar el nombre visible en el header y en sessionStorage
+                        this.residentName = data.name;
+                        this.houseLabel = data.name;
+                        sessionStorage.setItem('portero_houseLabel', data.name);
+
+                        this.configSuccess = `Nombre actualizado a "${data.name}"`;
+                        this.configForm.name = '';
+                        setTimeout(() => {
+                            this.configSuccess = '';
+                            this.configOpen = false;
+                        }, 1500);
+
+                    } catch (e) {
+                        this.configError = 'Error de conexión.';
+                        console.error(e);
+                    } finally {
+                        this.configLoading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

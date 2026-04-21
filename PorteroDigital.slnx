@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PorteroDigital.Application/PorteroDigital.Application.csproj" />
+    <Project Path="src/PorteroDigital.Domain/PorteroDigital.Domain.csproj" />
+    <Project Path="src/PorteroDigital.Infrastructure/PorteroDigital.Infrastructure.csproj" />
+    <Project Path="src/PorteroDigital.WebAPI/PorteroDigital.WebAPI.csproj" />
+  </Folder>
+</Solution>

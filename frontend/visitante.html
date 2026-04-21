@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directorio - Porteria Digital</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F5F5F5; }
+        .brutalist-card { 
+            background: white; 
+            border: 3px solid black; 
+            box-shadow: 10px 10px 0px 0px rgba(0,0,0,1);
+            position: relative;
+            overflow: hidden;
+        }
+        .brutalist-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('file:///C:/Users/Usuario/.gemini/antigravity/brain/a0408da0-f5c4-4be2-bf56-8211acbe9b85/noise_grain_texture_1776722573389.png');
+            opacity: 0.03;
+            pointer-events: none;
+        }
+        .brutalist-btn {
+            border: 2px solid black;
+            box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+            transition: all 0.1s;
+        }
+        .brutalist-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+    <div x-data="visitorApp()" x-init="init()" class="w-full max-w-md brutalist-card p-8">
+        
+        <!-- Header -->
+        <header class="mb-10">
+            <div @dblclick="mockLocationBypass()" class="inline-block cursor-default select-none" title="Doble clic para simular GPS">
+                <h1 class="text-3xl font-black uppercase tracking-tighter leading-none">Porteria<br>Digital</h1>
+                <div class="h-2 w-12 bg-black mt-4"></div>
+            </div>
+        </header>
+
+        <!-- Estado de GPS y Errores (Distancia > 50m) -->
+        <template x-if="geoStatus === 'checking'">
+            <div class="py-10 text-center animate-pulse">
+                <p class="text-xs font-black uppercase tracking-widest text-gray-500">Verificando Ubicación...</p>
+            </div>
+        </template>
+        
+        <template x-if="geoStatus === 'error'">
+            <div class="mb-8 border-2 border-black bg-black text-white p-6">
+                <p class="text-xs font-black uppercase tracking-[0.2em] text-red-500 mb-2">Acceso Denegado</p>
+                <p class="text-sm font-bold uppercase tracking-widest" x-text="errorMessage"></p>
+                <button @click="requestLocation()" class="mt-6 border border-white px-4 py-2 text-[10px] font-black uppercase hover:bg-white hover:text-black transition-colors">Reintentar</button>
+            </div>
+        </template>
+
+        <!-- Grilla de Unidades -->
+        <template x-if="geoStatus === 'ok' && step === 'directory'">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4">Seleccione la Unidad</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <template x-for="house in houses" :key="house.id">
+                        <button @click="selectHouse(house)" class="border-2 border-black py-4 px-2 hover:bg-black hover:text-white transition-colors text-center group">
+                            <span class="block text-xl font-black uppercase" x-text="house.identifier"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- Formulario (Cuando se toca una unidad) -->
+        <template x-if="geoStatus === 'ok' && step === 'form'">
+            <form @submit.prevent="submitVisit" class="space-y-8">
+                
+                <div class="flex justify-between items-center bg-black text-white px-4 py-3">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">Anunciando a</p>
+                        <p class="text-xl font-black uppercase" x-text="selectedHouse.identifier"></p>
+                    </div>
+                    <button type="button" @click="step = 'directory'" class="text-xs underline hover:text-gray-300">Cambiar</button>
+                </div>
+
+                <template x-if="apiError">
+                    <div class="border border-red-500 bg-red-50 text-red-700 p-3 text-xs font-bold uppercase tracking-widest">
+                        <span x-text="apiError"></span>
+                    </div>
+                </template>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest mb-2 text-gray-400">Nombre Completo</label>
+                    <input type="text" x-model="name" class="w-full border-b-2 border-black py-3 text-lg outline-none focus:bg-gray-50 px-2" placeholder="Juan Perez" required>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-widest mb-2 text-gray-400">Motivo de Visita</label>
+                    <select x-model="reason" class="w-full border-b-2 border-black py-3 text-lg outline-none bg-transparent px-2 cursor-pointer" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="Visita Personal">Visita Personal</option>
+                        <option value="Paqueteria">Paqueteria / Delivery</option>
+                        <option value="Servicio Tecnico">Servicio Tecnico</option>
+                    </select>
+                </div>
+
+                <button type="submit" :disabled="submitting" class="w-full bg-black text-white font-black py-5 uppercase tracking-widest hover:bg-gray-800 transition-colors disabled:opacity-50">
+                    <span x-show="!submitting">Llamar Timbre</span>
+                    <span x-show="submitting">Enviando...</span>
+                </button>
+            </form>
+        </template>
+
+        <!-- Estado de Enviado -->
+        <template x-if="geoStatus === 'ok' && step === 'sent'">
+            <div class="py-10 text-center">
+                <p class="text-2xl font-black uppercase tracking-tighter">Aviso Enviado</p>
+                <p class="text-sm mt-4 text-gray-600 font-bold uppercase tracking-widest">Aguardá en la puerta.</p>
+                <button @click="reset()" class="mt-12 text-[10px] font-black underline uppercase hover:text-gray-500">Volver al Inicio</button>
+            </div>
+        </template>
+
+    </div>
+
+    <script>
+        function visitorApp() {
+            // CONFIGURACIÓN DE RED
+            const USE_TUNNEL = false; // Cambiar a true para usar ngrok
+            const TUNNEL_URL = 'https://tu-url.ngrok-free.app';
+            const LOCAL_IP = 'localhost'; // O la IP de tu PC
+
+            // Coordenadas fijas del edificio (La Florida, Rosario)
+            const TARGET_LAT = -32.8800; 
+            const TARGET_LNG = -60.6850;
+            const MAX_DISTANCE_METERS = 50;
+
+            // Funcion Haversine para distancia en metros
+            function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+                const R = 6371e3; // Radio tierra en metros
+                const p1 = lat1 * Math.PI/180;
+                const p2 = lat2 * Math.PI/180;
+                const dp = (lat2-lat1) * Math.PI/180;
+                const dl = (lon2-lon1) * Math.PI/180;
+                const a = Math.sin(dp/2) * Math.sin(dp/2) +
+                          Math.cos(p1) * Math.cos(p2) *
+                          Math.sin(dl/2) * Math.sin(dl/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            return {
+                apiBaseUrl: USE_TUNNEL ? TUNNEL_URL : `http://${LOCAL_IP}:5166`,
+                step: 'directory', // 'directory', 'form', 'sent'
+                geoStatus: 'checking', // 'checking', 'error', 'ok'
+                errorMessage: '',
+                apiError: '',
+                submitting: false,
+                
+                houses: [],
+                selectedHouse: null,
+                
+                name: '',
+                reason: '',
+
+                init() {
+                    console.log("Conectando a API:", this.apiBaseUrl);
+                    this.requestLocation();
+                },
+
+                requestLocation() {
+                    this.geoStatus = 'checking';
+                    this.errorMessage = '';
+
+                    if (!navigator.geolocation) {
+                        this.geoError("Tu dispositivo no soporta geolocalización.");
+                        return;
+                    }
+
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const distance = getDistanceInMeters(
+                                position.coords.latitude, 
+                                position.coords.longitude, 
+                                TARGET_LAT, 
+                                TARGET_LNG
+                            );
+
+                            if (distance > MAX_DISTANCE_METERS) {
+                                this.geoError(`Estás a ${Math.round(distance)}m. Tenés que estar a menos de ${MAX_DISTANCE_METERS}m de la puerta.`);
+                            } else {
+                                this.geoSuccess();
+                            }
+                        },
+                        (error) => {
+                            if (error.code === error.PERMISSION_DENIED) {
+                                this.geoError("Debes permitir tu ubicación para tocar el timbre.");
+                            } else {
+                                this.geoError("No pudimos leer tu ubicación. Chequea el GPS.");
+                            }
+                        },
+                        { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                },
+
+                geoError(msg) {
+                    this.errorMessage = msg;
+                    this.geoStatus = 'error';
+                },
+
+                geoSuccess() {
+                    this.geoStatus = 'ok';
+                    this.fetchHouses();
+                },
+
+                mockLocationBypass() {
+                    // Clic oculto en el header para desarrollo local bypass
+                    console.log("Mock Bypass Activado.");
+                    this.geoSuccess();
+                },
+
+                async fetchHouses() {
+                    try {
+                        const res = await fetch(`${this.apiBaseUrl}/api/houses`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.houses = data.filter(h => h.isActive).sort((a,b) => a.identifier.localeCompare(b.identifier, undefined, {numeric: true}));
+                        } else {
+                            this.geoError("Error cargando el directorio.");
+                        }
+                    } catch (e) {
+                        this.geoError("No se pudo conectar con portería.");
+                    }
+                },
+
+                selectHouse(house) {
+                    this.selectedHouse = house;
+                    this.step = 'form';
+                },
+
+                async submitVisit() {
+                    if (!this.selectedHouse) return;
+                    this.apiError = '';
+                    this.submitting = true;
+
+                    try {
+                        const res = await fetch(`${this.apiBaseUrl}/api/visits/notify/${this.selectedHouse.id}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            // Se eliminó qRToken del payload (ahora es opcional en el server)
+                            body: JSON.stringify({ name: this.name, reason: this.reason })
+                        });
+
+                        if (res.ok) {
+                            this.step = 'sent';
+                        } else {
+                            this.apiError = 'Error. Intentá nuevamente.';
+                        }
+                    } catch (e) {
+                        this.apiError = 'Error de conexión.';
+                    } finally {
+                        this.submitting = false;
+                    }
+                },
+
+                reset() {
+                    this.selectedHouse = null;
+                    this.name = '';
+                    this.reason = '';
+                    this.step = 'directory';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

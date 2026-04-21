@@ -1,0 +1,18 @@
+@PorteroDigital.WebAPI_HostAddress = https://localhost:7001
+@HouseId = 00000000-0000-0000-0000-000000000001
+@QrToken = demo-token
+
+GET {{PorteroDigital.WebAPI_HostAddress}}/api/houses/{{HouseId}}/qr?token={{QrToken}}
+Accept: application/json
+
+###
+
+POST {{PorteroDigital.WebAPI_HostAddress}}/api/visitor-logs
+Content-Type: application/json
+
+{
+  "houseId": "{{HouseId}}",
+  "qrToken": "{{QrToken}}",
+  "visitorName": "Visita de prueba",
+  "reason": "Entrega"
+}
