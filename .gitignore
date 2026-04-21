@@ -33,3 +33,4 @@ jwt_secret.txt
 # OS Files
 .DS_Store
 Thumbs.db
+src/PorteroDigital.WebAPI/ffmpeg.exe
