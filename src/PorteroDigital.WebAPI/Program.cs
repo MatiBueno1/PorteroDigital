@@ -1,7 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PorteroDigital.Infrastructure;
+using PorteroDigital.Infrastructure.Persistence;
 using PorteroDigital.Infrastructure.Security;
 using PorteroDigital.WebAPI.Hubs;
 
@@ -101,5 +103,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ResidentNotificationsHub>("/hubs/resident-notifications").RequireCors("SignalRPolicy");
+
+// Migraciones automáticas (Para que funcione en Neon desde el inicio)
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<PorteroDigitalDbContext>();
+    dbContext.Database.Migrate();
+}
+
+app.MapGet("/", () => "Portero Digital API is running! 🚀");
+app.MapGet("/healthz", () => Results.Ok("Healthy"));
 
 app.Run();

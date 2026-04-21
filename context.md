@@ -1,87 +1,73 @@
-# 🏛️ Master Context: Portero Digital Rosario
+# 🏛️ Master Context: Portero Digital
 
-Este documento es el cerebro central del proyecto. Contiene la arquitectura, lógica de negocio y estado técnico actual para que cualquier desarrollador (IA o Humano) pueda continuar el trabajo con precisión total.
+Este documento es la fuente de verdad absoluta del proyecto. Contiene la arquitectura, el estado técnico actual y la hoja de ruta para que cualquier desarrollador (IA o Humano) pueda continuar el trabajo desde cero.
 
 ---
 
 ## 1. Visión General
-**Portero Digital** es un sistema de seguridad residencial de vanguardia. Permite que visitantes en una puerta física escaneen un código QR para anunciarse, y que los residentes reciban una notificación nativa en sus teléfonos para ver la cámara en vivo y decidir si permiten el acceso.
-
-**Estética Visual:** "Brutalismo Moderno". Alto contraste (Negro/Blanco/Gris), tipografías pesadas (`Black`/`900`), sin redondeces excesivas, bordes marcados y minimalismo absoluto.
-
----
-
-## 2. Stack Tecnológico
-
-### Backend (Core API)
-- **Framework:** .NET 10.0 (C#)
-- **Arquitectura:** Clean Architecture (Domain, Application, Infrastructure, WebAPI).
-- **Persistencia:** Entity Framework Core con SQLite (Desarrollo) y soporte para SQL Server.
-- **Comunicación Real-Time:** SignalR Hubs para mensajería instantánea.
-- **Seguridad:** JWT (JSON Web Tokens) con Claims por `HouseId` y `ResidentId`.
-- **Procesamiento de Video:** FFmpeg (integrado vía Process en C#) actuando como Proxy RTSP a MJPEG.
-
-### Frontend Web (Visitante / Legacy Inquilino)
-- **JS:** Alpine.js (ligero y reactivo).
-- **CSS:** Tailwind CSS (Estilo Brutalista).
-- **SignalR Client:** Integración nativa para recibir notificaciones en navegador.
-
-### Mobile App (Residente Definitive)
-- **Framework:** React Native con Expo (SDK 54+).
-- **Estilo:** NativeWind (Tailwind nativo) + CSS Global.
-- **Navegación:** Expo Router (File-based routing).
-- **Persistencia:** Expo SecureStore para tokens y sesión.
-- **Notificaciones:** Expo Notifications (integrado con el backend .NET).
+**Portero Digital** es un sistema de seguridad residencial.
+- **Flujo:** Visitantes escanean un QR -> Notificación push al celular del residente -> El residente ve la cámara en vivo y autoriza el acceso.
+- **Estética:** "Brutalismo Moderno". Alto contraste, tipografía pesada, bordes marcados, minimalismo.
 
 ---
 
-## 3. Arquitectura de Archivos y Responsabilidades
+## 2. Estado Técnico Actual (Abril 2026)
 
-### Backend `src/`
-- **`PorteroDigital.Domain`**: Entidades puras (`Resident`, `House`, `VisitorLog`, `CameraConfiguration`). Lógica agnóstica de persistencia.
-- **`PorteroDigital.Application`**: Contratos (`Abstractions`), Modelos (`DTOs`) y lógica de servicios. Define CÓMO se interactúa con el sistema.
-- **`PorteroDigital.Infrastructure`**: Implementación de servicios, EF Core DbContext (`PorteroDigitalDbContext`), Seguridad (JWT), y Notificaciones Push (Expo API).
-- **`PorteroDigital.WebAPI`**: Controladores REST, SignalR Hubs, y la configuración de `Program.cs`. Contiene el ejecutable `ffmpeg.exe` para el streaming.
+### Cambios Recientes Críticos:
+- **Renombrado:** El proyecto se consolidó en la carpeta raíz `PorteroDigital`.
+- **Seguridad (Zero Leaks):** Se eliminaron todas las credenciales del código (`appsettings.json`). Ahora se usa un sistema de variables de entorno con un archivo `.env` (ignorado por Git).
+- **Git:** Repositorio inicializado en la raíz. Archivos limpiados y bindeados al remoto `https://github.com/MatiBueno1/PorteroDigital.git`.
 
-### Mobile `mobile-app/`
-- **`app/`**: Rutas de la aplicación.
-    - `_layout.tsx`: Configuración global, temas y NativeWind.
-    - `index.tsx`: Panel principal del residente (historial, cámara, SignalR).
-    - `login.tsx`: Pantalla de acceso con persistencia de sesión.
-- **`src/api/`**: Cliente Axios configurado con la IP local (`192.168.3.2`).
-
----
-
-## 4. Lógica de Funcionalidades Críticas
-
-### Transmisión de Cámara (Zero Latency)
-- **Ruta:** `GET /api/camera/stream`
-- **Lógica:** El servidor levanta un proceso de `ffmpeg.exe`. Toma una URL `rtsp://` local, aplica parámetros de ultra-baja latencia (`-fflags nobuffer`, `-rtsp_transport udp`, `-analyzeduration 0`) y escupe un stream `multipart/x-mixed-replace` directamente al Response.
-- **Consumo:** En Web y Mobile se consume simplemente apuntando un tag `<img src="...">` a este endpoint del servidor.
-
-### Notificaciones Push (El "Timbre")
-1. **Registro:** Al hacer login, la App Móvil solicita un `ExpoPushToken` y lo guarda en la base de datos vinculado al `ResidentDevice`.
-2. **Disparo:** El visitante envía un `POST` a `/api/visits/notify/{houseId}`.
-3. **Distribución:**
-   - Envía mensaje instantáneo vía **SignalR** a todos los clientes web/app conectados al grupo de la casa.
-   - Dispara una llamada al **ResidentPushNotificationService** que envía un POST a la API de Expo (`https://exp.host/--/api/v2/push/send`) para despertar los celulares físicos aunque estén bloqueados.
+### Stack Tecnológico:
+- **Backend:** .NET 10.0 (Clean Architecture).
+    - **Persistencia:** EF Core (Soporte dual: Sqlite para dev, Postgres para nube).
+    - **Streaming:** FFmpeg actuando como proxy de ultra-baja latencia para RTSP.
+    - **Real-time:** SignalR para eventos instantáneos.
+- **Mobile:** Expo / React Native (SDK 54+).
+    - **Estilo:** NativeWind.
+    - **Router:** Expo Router.
+- **Frontend:** HTML + Alpine.js + Tailwind CSS.
 
 ---
 
-## 5. Configuración de Desarrollo Actual
+## 3. Configuración de Seguridad e Inyección (.env)
+Para mantener el proyecto seguro, el backend utiliza un cargador manual en `Program.cs` que mapea un archivo `.env` externo a la configuración de .NET:
 
-- **Base de Datos:** SQLite (`portero-digital.dev.db`). Pre-cargada con casas 01 a 12 y credenciales `casaXX@portero.local` / `Portero123!`.
-- **IP Local Server:** `192.168.3.2:5166`.
-- **Dependencias Externas:** Requiere `ffmpeg.exe` en la raíz de la WebAPI para el streaming de cámara.
+**Variables Requeridas:**
+- `CAMERA_RTSP_URL`: Enlace completo a la cámara con credenciales.
+- `CAMERA_LIGHT_ON_URL` (y otras): Enlaces CGI para control de hardware.
+- `JWT_SIGNING_KEY`: Clave secreta para firmar tokens de residentes.
 
 ---
 
-## 6. Estado de Avance
-- [x] Backend Clean Architecture base.
-- [x] Streaming de Cámara RTSP -> MJPEG funcional con <1s delay.
-- [x] Sistema de Notificaciones Real-time vía SignalR.
-- [x] Interfaz de Visitante Web lista para escaneo QR.
-- [x] App Móvil (Expo) inicializada y configurada con diseño Brutalista.
-- [x] Integración de Backend con Expo Push API.
-- [ ] Finalización de registro de Tokens Push desde la App Móvil.
+## 4. Arquitectura de Archivos
+- `/src`: Backend .NET (Domain, Application, Infrastructure, WebAPI).
+- `/mobile-app`: Código fuente de la App de residentes.
+- `/frontend`: Páginas de visitantes y directorios.
+- `/.env`: Secretos locales (NO SUBIR).
+- `/.env.example`: Plantilla de secretos.
+
+---
+
+## 5. Hoja de Ruta Inmediata (Roadmap)
+
+### Fase 1: Despliegue en la Nube
+1. **GitHub:** Subir el estado actual (`git push`).
+2. **Render:** Crear un Web Service basado en el `Dockerfile` existente.
+3. **Database:** Migrar de SQLite a PostgreSQL en Render.
+4. **Secrets:** Configurar las Environment Variables en el dashboard de Render.
+
+### Fase 2: Build y Distribución Mobile
+1. **URL de Producción:** Actualizar `mobile-app/src/api/config.ts` con la URL de Render.
+2. **EAS Build:** Generar el archivo `.apk` definitivo.
+3. **Multi-Residente:** Asegurar que cada residente pueda loguearse y recibir notificaciones exclusivas de su casa.
+
+---
+
+## 6. Instrucciones para la IA
+Para ayudar en el despliegue:
+- El backend detecta automáticamente si está en Render vía la variable `PORT`.
+- El streaming de cámara requiere que la IP de la cámara sea accesible desde el servidor (vía VPN o IP pública) o se verá solo localmente.
+- Asegúrate de mapear `Database:Provider=Postgres` en producción.
+la App Móvil.
 - [ ] Empaquetado definitivo para producción.
