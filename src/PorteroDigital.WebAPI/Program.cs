@@ -134,5 +134,24 @@ using (var scope = app.Services.CreateScope())
 
 app.MapGet("/", () => "Portero Digital API is running! 🚀");
 app.MapGet("/healthz", () => Results.Ok("Healthy"));
+app.MapGet("/test-db", async (PorteroDigitalDbContext db, CancellationToken ct) => 
+{
+    try 
+    {
+        var connStr = db.Database.GetConnectionString();
+        var canConnect = await db.Database.CanConnectAsync(ct);
+        var activeHouses = await db.Houses.CountAsync(ct);
+        return Results.Ok(new { 
+            CanConnect = canConnect, 
+            Provider = db.Database.ProviderName, 
+            HousesCount = activeHouses,
+            ConnectionStringStart = connStr?[..Math.Min(60, connStr.Length)] + "..."
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.ToString(), title: "Database Connection Failure");
+    }
+});
 
 app.Run();
