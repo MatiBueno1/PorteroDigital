@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using PorteroDigital.Infrastructure;
 using PorteroDigital.Infrastructure.Persistence;
 using PorteroDigital.Infrastructure.Security;
+using PorteroDigital.Domain.Entities;
 using PorteroDigital.WebAPI.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
