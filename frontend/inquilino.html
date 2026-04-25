@@ -145,27 +145,25 @@
                     <!-- Notificación activa -->
                     <template x-if="notification">
                         <div class="bg-white text-black p-8 shadow-[12px_12px_0px_0px_rgba(255,255,255,0.1)] mb-12">
+                            <!-- Encabezado de la visita -->
                             <div class="mb-8">
-                                <span class="text-[10px] font-black bg-black text-white px-2 py-1 uppercase">Nueva Visita</span>
+                                <span class="text-[10px] font-black bg-black text-white px-2 py-1 uppercase">🛎️ Nueva Visita</span>
                                 <h2 class="text-4xl font-black mt-4 leading-none" x-text="notification.visitorName"></h2>
                                 <p class="text-lg text-gray-600 mt-2 font-bold uppercase tracking-tight" x-text="notification.reason"></p>
+                                <p class="text-xs text-gray-400 font-mono mt-1" x-text="notification.timestamp"></p>
                             </div>
 
-                            <div class="bg-black aspect-video flex items-center justify-center mb-8 relative overflow-hidden">
-                                <template x-if="verCamara">
-                                    <img :src="`${API_BASE}/api/camera/stream`" alt="Cámara Pasillo" class="w-full h-full object-cover">
-                                </template>
-                                <span x-show="!verCamara" class="text-[10px] font-bold text-gray-700 uppercase tracking-widest">Camara Off</span>
-                            </div>
+                            <!-- TODO(camera): Bloque de cámara en vivo.
+                                 Cuando se integre la cámara, agregar aquí:
+                                 - Un <div class="bg-black aspect-video ..."> con <img :src="`${API_BASE}/api/camera/stream`">
+                                 - Un botón para toggle de la vista
+                                 - El estado verCamara: false en el return del componente Alpine
+                            -->
 
-                            <div class="grid grid-cols-1 gap-4">
-                                <button @click="verCamara = !verCamara" class="border-2 border-black py-4 font-black uppercase tracking-widest hover:bg-gray-100 transition-colors">
-                                    <span x-text="verCamara ? 'Cerrar Camara' : 'Ver Camara'"></span>
-                                </button>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <button @click="aceptar()" class="bg-black text-white py-6 font-black uppercase tracking-widest hover:bg-gray-800 transition-colors">Aceptar</button>
-                                    <button @click="ignorar()" class="border-2 border-black py-6 font-black uppercase tracking-widest hover:bg-gray-100 transition-colors text-gray-400">Ignorar</button>
-                                </div>
+                            <!-- Acciones: Aceptar o Ignorar la visita -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <button @click="aceptar()" class="bg-black text-white py-6 font-black uppercase tracking-widest hover:bg-gray-800 transition-colors">Aceptar</button>
+                                <button @click="ignorar()" class="border-2 border-black py-6 font-black uppercase tracking-widest hover:bg-gray-100 transition-colors text-gray-400">Ignorar</button>
                             </div>
                         </div>
                     </template>
@@ -232,7 +230,7 @@
                 houseLabel: '',
                 residentName: '',
                 notification: null,
-                verCamara: false,
+                // TODO(camera): Agregar verCamara: false cuando se integre la cámara
                 history: [],
                 connectionLabel: 'Conectando...',
                 connected: false,
@@ -357,11 +355,11 @@
 
                 aceptar() {
                     this.notification = null;
-                    this.verCamara = false;
+                    // TODO(camera): Agregar this.verCamara = false al integrar la cámara
                 },
                 ignorar() {
                     this.notification = null;
-                    this.verCamara = false;
+                    // TODO(camera): Agregar this.verCamara = false al integrar la cámara
                 },
 
                 async logout() {

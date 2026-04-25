@@ -5,7 +5,6 @@ using PorteroDigital.Domain.Entities;
 using PorteroDigital.Domain.Enums;
 using PorteroDigital.Infrastructure.Notifications;
 using PorteroDigital.Infrastructure.Persistence;
-using PorteroDigital.Application.Abstractions.Services;
 using PorteroDigital.WebAPI.Hubs;
 
 namespace PorteroDigital.WebAPI.Controllers;
@@ -15,7 +14,6 @@ namespace PorteroDigital.WebAPI.Controllers;
 public sealed class VisitsController(
     IHubContext<ResidentNotificationsHub> hubContext,
     ResidentPushNotificationService pushNotificationService,
-    ICameraControlService cameraControlService,
     PorteroDigitalDbContext context) : ControllerBase
 {
     [HttpPost("notify/{houseId:guid}")]
@@ -97,12 +95,11 @@ public sealed class VisitsController(
 
         await pushNotificationService.NotifyVisitorArrivedAsync(activeDevices, house, log, cancellationToken);
 
-        // Automatización: Luz si es después de las 18:30
-        var now = DateTimeOffset.Now; // Hora local del servidor
-        if (now.Hour > 18 || (now.Hour == 18 && now.Minute >= 30))
-        {
-            _ = cameraControlService.SetLightStatusAsync(true, CancellationToken.None);
-        }
+        // TODO(camera): Automatización de luz al anochecer.
+        // Cuando se integre la cámara, inyectar ICameraControlService y descomentar:
+        // var now = DateTimeOffset.Now;
+        // if (now.Hour > 18 || (now.Hour == 18 && now.Minute >= 30))
+        //     _ = cameraControlService.SetLightStatusAsync(true, CancellationToken.None);
 
         return CreatedAtAction(nameof(GetHistory), new { houseId }, response);
     }

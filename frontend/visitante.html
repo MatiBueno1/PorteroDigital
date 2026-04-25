@@ -16,12 +16,13 @@
             position: relative;
             overflow: hidden;
         }
+        /* Textura de grano: SVG inline portable, no depende de archivos locales */
         .brutalist-card::before {
             content: "";
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('file:///C:/Users/Usuario/.gemini/antigravity/brain/a0408da0-f5c4-4be2-bf56-8211acbe9b85/noise_grain_texture_1776722573389.png');
-            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            opacity: 0.035;
             pointer-events: none;
         }
         .brutalist-btn {
@@ -32,6 +33,20 @@
         .brutalist-btn:active {
             transform: translate(2px, 2px);
             box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+        }
+        /* Animación de timbre */
+        @keyframes bell-ring {
+            0%,  50%, 100% { transform: rotate(0deg); }
+            5%             { transform: rotate(-22deg); }
+            15%            { transform: rotate(22deg); }
+            25%            { transform: rotate(-18deg); }
+            35%            { transform: rotate(18deg); }
+            45%            { transform: rotate(-10deg); }
+        }
+        .bell-ring {
+            display: inline-block;
+            transform-origin: 50% 0%;
+            animation: bell-ring 0.9s ease-in-out 3;
         }
     </style>
 </head>
@@ -65,10 +80,11 @@
         <template x-if="geoStatus === 'ok' && step === 'directory'">
             <div>
                 <p class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4">Seleccione la Unidad</p>
-                <div class="grid grid-cols-2 gap-4">
+                <!-- 2 cols en móvil, 3 en tablets/desktop: mejor para 12 unidades -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <template x-for="house in houses" :key="house.id">
                         <button @click="selectHouse(house)" class="border-2 border-black py-4 px-2 hover:bg-black hover:text-white transition-colors text-center group">
-                            <span class="block text-xl font-black uppercase" x-text="house.identifier"></span>
+                            <span class="block text-lg font-black uppercase" x-text="house.identifier"></span>
                         </button>
                     </template>
                 </div>
@@ -118,8 +134,11 @@
         <!-- Estado de Enviado -->
         <template x-if="geoStatus === 'ok' && step === 'sent'">
             <div class="py-10 text-center">
+                <div class="flex justify-center mb-6">
+                    <span class="bell-ring text-5xl" aria-hidden="true">🛎️</span>
+                </div>
                 <p class="text-2xl font-black uppercase tracking-tighter">Aviso Enviado</p>
-                <p class="text-sm mt-4 text-gray-600 font-bold uppercase tracking-widest">Aguardá en la puerta.</p>
+                <p class="text-sm mt-4 text-gray-600 font-bold uppercase tracking-widest">El residente fue notificado.<br>Aguardá en la puerta.</p>
                 <button @click="reset()" class="mt-12 text-[10px] font-black underline uppercase hover:text-gray-500">Volver al Inicio</button>
             </div>
         </template>
