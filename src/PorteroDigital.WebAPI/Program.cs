@@ -127,7 +127,7 @@ using (var scope = app.Services.CreateScope())
         }
         catch
         {
-            var dbCreator = dbContext.Database.GetService<Microsoft.EntityFrameworkCore.Infrastructure.IDatabaseCreator>() as Microsoft.EntityFrameworkCore.Storage.IRelationalDatabaseCreator;
+            var dbCreator = dbContext.Database.GetService<Microsoft.EntityFrameworkCore.Storage.IDatabaseCreator>() as Microsoft.EntityFrameworkCore.Storage.IRelationalDatabaseCreator;
             if (dbCreator != null)
             {
                 dbCreator.CreateTables();
