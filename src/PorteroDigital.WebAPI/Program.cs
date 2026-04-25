@@ -107,9 +107,27 @@ app.MapHub<ResidentNotificationsHub>("/hubs/resident-notifications").RequireCors
 // Migraciones automáticas (Para que funcione en Neon desde el inicio)
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<PorteroDigitalDbContext>();
-    dbContext.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<PorteroDigitalDbContext>();
+        var connString = dbContext.Database.GetConnectionString();
+        logger.LogInformation("🗄️  Conectando a DB. Provider: {Provider} | ConnectionString (inicio): {Conn}",
+            dbContext.Database.ProviderName,
+            connString?[..Math.Min(60, connString.Length)] + "...");
+
+        dbContext.Database.Migrate();
+        logger.LogInformation("✅ Migraciones aplicadas correctamente.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogCritical(ex,
+            "❌ Error al aplicar migraciones. El app arrancó igual. Revisar connection string y configuración de DB.");
+        // No se hace throw: el app arranca para que Render lo vea como 'live'
+        // y los logs muestren el error real.
+    }
 }
+
 
 app.MapGet("/", () => "Portero Digital API is running! 🚀");
 app.MapGet("/healthz", () => Results.Ok("Healthy"));
