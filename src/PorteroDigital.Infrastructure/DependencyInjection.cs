@@ -31,7 +31,11 @@ public static class DependencyInjection
 
             if (string.Equals(databaseProvider, "Postgres", StringComparison.OrdinalIgnoreCase))
             {
-                var postgresConnectionString = configuration.GetConnectionString("Postgres") ?? configuration["DATABASE_URL"];
+                var rawUrl = configuration.GetConnectionString("Postgres") ?? configuration["DATABASE_URL"];
+                // Convertir URI postgresql:// a key=value string compatible con Npgsql.
+                // DATABASE_URL de Neon/Render incluye params como ?channel_binding=prefer
+                // que Npgsql rechaza con KeyNotFoundException. Parseamos manualmente.
+                var postgresConnectionString = ConvertPostgresUriToConnectionString(rawUrl);
                 options.UseNpgsql(postgresConnectionString);
                 return;
             }
@@ -50,5 +54,40 @@ public static class DependencyInjection
         services.AddSingleton<ResidentTokenService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Convierte una URI de PostgreSQL (postgres://user:pass@host:port/db?params)
+    /// a un connection string key=value compatible con Npgsql.
+    /// Descarta query params no reconocidos (ej: channel_binding de Neon)
+    /// que causan KeyNotFoundException en NpgsqlConnectionStringBuilder.
+    /// </summary>
+    private static string? ConvertPostgresUriToConnectionString(string? uri)
+    {
+        if (string.IsNullOrWhiteSpace(uri)) return uri;
+
+        // Si ya es key=value, devolverlo tal cual
+        if (!uri.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+            !uri.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+            return uri;
+
+        try
+        {
+            var parsed   = new Uri(uri);
+            var userInfo = parsed.UserInfo.Split(':', 2);
+            var host     = parsed.Host;
+            var port     = parsed.Port > 0 ? parsed.Port : 5432;
+            var database = parsed.AbsolutePath.TrimStart('/');
+            var username = Uri.UnescapeDataString(userInfo[0]);
+            var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty;
+
+            // SSL requerido para Neon/Supabase/Render Postgres
+            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        }
+        catch
+        {
+            // Si el parsing falla, pasar la URI original y dejar que Npgsql intente
+            return uri;
+        }
     }
 }
