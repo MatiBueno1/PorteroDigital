@@ -140,9 +140,21 @@ app.MapGet("/test-db", async (PorteroDigitalDbContext db, CancellationToken ct) 
     {
         var connStr = db.Database.GetConnectionString();
         var canConnect = await db.Database.CanConnectAsync(ct);
+        
+        // Attempt to run EnsureCreated to see what exactly fails
+        string ensureCreatedResult = "Not attempted";
+        try {
+            var created = await db.Database.EnsureCreatedAsync(ct);
+            ensureCreatedResult = created ? "Created new schema" : "Database already exists or no action taken";
+        } catch (Exception e) {
+            ensureCreatedResult = "Failed: " + e.Message;
+            return Results.Problem(detail: e.ToString(), title: "EnsureCreated Failed");
+        }
+
         var activeHouses = await db.Houses.CountAsync(ct);
         return Results.Ok(new { 
             CanConnect = canConnect, 
+            EnsureCreated = ensureCreatedResult,
             Provider = db.Database.ProviderName, 
             HousesCount = activeHouses,
             ConnectionStringStart = connStr?[..Math.Min(60, connStr.Length)] + "..."
