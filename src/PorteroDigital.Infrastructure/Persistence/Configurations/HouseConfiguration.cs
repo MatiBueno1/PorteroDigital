@@ -27,6 +27,14 @@ public sealed class HouseConfiguration : IEntityTypeConfiguration<House>
         builder.Property(x => x.CreatedAtUtc)
             .IsRequired();
 
+        builder.Property(x => x.PublicContactNumbers)
+            .HasMaxLength(150)
+            .IsRequired(false);
+
+        builder.Property(x => x.ShowContactNumbers)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.HasIndex(x => x.Identifier)
             .IsUnique();
 

@@ -103,6 +103,13 @@
                     <button type="button" @click="step = 'directory'" class="text-xs underline hover:text-gray-300">Cambiar</button>
                 </div>
 
+                <template x-if="selectedHouse.showContactNumbers && selectedHouse.publicContactNumbers">
+                    <div class="border-2 border-black p-4 text-center">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">Teléfono Público</p>
+                        <p class="text-lg font-black tracking-widest" x-text="selectedHouse.publicContactNumbers"></p>
+                    </div>
+                </template>
+
                 <template x-if="apiError">
                     <div class="border border-red-500 bg-red-50 text-red-700 p-3 text-xs font-bold uppercase tracking-widest">
                         <span x-text="apiError"></span>
@@ -111,7 +118,7 @@
 
                 <div>
                     <label class="block text-[10px] font-black uppercase tracking-widest mb-2 text-gray-400">Nombre Completo</label>
-                    <input type="text" x-model="name" class="w-full border-b-2 border-black py-3 text-lg outline-none focus:bg-gray-50 px-2" placeholder="Juan Perez" required>
+                    <input type="text" x-model="name" class="w-full border-b-2 border-black py-3 text-lg outline-none focus:bg-gray-50 px-2" placeholder="" required>
                 </div>
 
                 <div>
@@ -139,7 +146,7 @@
                 </div>
                 <p class="text-2xl font-black uppercase tracking-tighter">Aviso Enviado</p>
                 <p class="text-sm mt-4 text-gray-600 font-bold uppercase tracking-widest">El residente fue notificado.<br>Aguardá en la puerta.</p>
-                <button @click="reset()" class="mt-12 text-[10px] font-black underline uppercase hover:text-gray-500">Volver al Inicio</button>
+                <button @click="returnToHouse()" class="mt-12 text-[10px] font-black underline uppercase hover:text-gray-500">Volver a la puerta</button>
             </div>
         </template>
 
@@ -290,6 +297,12 @@
                     this.name = '';
                     this.reason = '';
                     this.step = 'directory';
+                },
+
+                returnToHouse() {
+                    this.name = '';
+                    this.reason = '';
+                    this.step = 'form';
                 }
             }
         }

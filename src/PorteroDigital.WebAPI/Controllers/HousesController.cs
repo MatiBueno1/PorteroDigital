@@ -21,7 +21,9 @@ public sealed class HousesController(
                 h.Id,
                 h.Identifier,
                 h.AddressLabel,
-                h.IsActive
+                h.IsActive,
+                h.PublicContactNumbers,
+                h.ShowContactNumbers
             })
             .ToListAsync(cancellationToken);
 

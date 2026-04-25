@@ -9,4 +9,5 @@ public interface IResidentMobileService
     Task<ResidentVisitHistoryItemDto?> DecideVisitAsync(Guid residentId, Guid visitorLogId, DecideVisitRequest request, CancellationToken cancellationToken);
     Task RegisterDeviceAsync(Guid residentId, RegisterDeviceRequest request, CancellationToken cancellationToken);
     Task<string?> UpdateNameAsync(Guid residentId, string newName, CancellationToken cancellationToken);
+    Task<bool> UpdateContactConfigAsync(Guid residentId, string? publicContactNumbers, bool showContactNumbers, CancellationToken cancellationToken);
 }

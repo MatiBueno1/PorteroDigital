@@ -9,6 +9,8 @@ public sealed class House
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public CameraConfiguration? CameraConfiguration { get; set; }
+    public string? PublicContactNumbers { get; set; }
+    public bool ShowContactNumbers { get; set; }
     public ICollection<Resident> Residents { get; set; } = new List<Resident>();
     public ICollection<VisitorLog> VisitorLogs { get; set; } = new List<VisitorLog>();
 }

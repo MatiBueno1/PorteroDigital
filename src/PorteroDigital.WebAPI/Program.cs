@@ -132,8 +132,60 @@ using (var scope = app.Services.CreateScope())
             {
                 dbCreator.CreateTables();
                 logger.LogInformation("✅ Tablas creadas forzadamente de cero.");
+
+                // CreateTables NO ejecuta el HasData (seed). Lo hacemos manualmente si está vacío:
+                if (!dbContext.Houses.Any())
+                {
+                    logger.LogInformation("🌱 Insertando datos semilla (Houses & Residents)...");
+                    for (int i = 1; i <= 12; i++)
+                    {
+                        var houseId = new Guid($"00000000-0000-0000-0000-0000000000{i:D2}");
+                        var residentId = new Guid($"10000000-0000-0000-0000-0000000000{i:D2}");
+                        
+                        dbContext.Houses.Add(new House
+                        {
+                            Id = houseId,
+                            Identifier = $"Casa {i}",
+                            AddressLabel = $"Pasillo Unidad {i}",
+                            QrToken = $"TOKEN-CASA-{i:D2}",
+                            IsActive = true,
+                            CreatedAtUtc = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                        });
+
+                        dbContext.Residents.Add(new Resident
+                        {
+                            Id = residentId,
+                            HouseId = houseId,
+                            FullName = $"Inquilino Casa {i}",
+                            Email = $"casa{i:D2}@portero.local",
+                            PhoneNumber = $"341000{i:D4}",
+                            PasswordHash = PorteroDigital.Infrastructure.Security.ResidentPasswordHasher.HashSeed("Portero123!", residentId),
+                            IsPrimaryContact = true,
+                            IsActive = true,
+                            CreatedAtUtc = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                        });
+                    }
+                    dbContext.SaveChanges();
+                    logger.LogInformation("✅ Datos semilla insertados correctamente.");
+                }
             }
         }
+
+        // Intento de auto-reparación segura para las nuevas columnas de la feature actual:
+        try
+        {
+            dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"Houses\" ADD COLUMN \"PublicContactNumbers\" character varying(150) NULL;");
+            dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"Houses\" ADD COLUMN \"ShowContactNumbers\" boolean NOT NULL DEFAULT FALSE;");
+            logger.LogInformation("✅ Columnas nuevas de contacto añadidas vía auto-repair.");
+        }
+        catch { /* Ignorar si las columnas ya existen o falló (ej: en SQLite usa sintaxis TEXT) */ }
+        
+        try
+        {
+            dbContext.Database.ExecuteSqlRaw("ALTER TABLE Houses ADD COLUMN PublicContactNumbers TEXT NULL;");
+            dbContext.Database.ExecuteSqlRaw("ALTER TABLE Houses ADD COLUMN ShowContactNumbers INTEGER NOT NULL DEFAULT 0;");
+        }
+        catch { /* Resonancia para SQLite */ }
     }
     catch (Exception ex)
     {

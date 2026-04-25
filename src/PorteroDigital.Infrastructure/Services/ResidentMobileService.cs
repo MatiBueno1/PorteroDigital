@@ -32,6 +32,8 @@ public sealed class ResidentMobileService(IApplicationDbContext dbContext) : IRe
             resident.House.AddressLabel,
             resident.House.CameraConfiguration?.IsEnabled == true,
             resident.House.CameraConfiguration?.IsEnabled == true ? resident.House.CameraConfiguration.StreamUrl : null,
+            resident.House.PublicContactNumbers,
+            resident.House.ShowContactNumbers,
             recentVisits);
     }
 
@@ -196,5 +198,23 @@ public sealed class ResidentMobileService(IApplicationDbContext dbContext) : IRe
         resident.FullName = trimmed;
         await dbContext.SaveChangesAsync(cancellationToken);
         return resident.FullName;
+    }
+
+    public async Task<bool> UpdateContactConfigAsync(Guid residentId, string? publicContactNumbers, bool showContactNumbers, CancellationToken cancellationToken)
+    {
+        var resident = await dbContext.Residents
+            .Include(r => r.House)
+            .SingleOrDefaultAsync(r => r.Id == residentId && r.IsActive, cancellationToken);
+
+        if (resident is null || resident.House is null)
+        {
+            return false;
+        }
+
+        resident.House.PublicContactNumbers = string.IsNullOrWhiteSpace(publicContactNumbers) ? null : publicContactNumbers.Trim();
+        resident.House.ShowContactNumbers = showContactNumbers;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

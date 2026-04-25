@@ -121,6 +121,40 @@
                                     <p class="text-[10px] text-gray-600 uppercase font-bold mt-2">El email de acceso no cambia.</p>
                                 </div>
 
+                                <!-- Contacto Público -->
+                                <div class="mt-8 border-t border-white/10 pt-6">
+                                    <h3 class="text-xs font-black uppercase tracking-widest text-gray-300 mb-4">Información de Puerta</h3>
+                                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Teléfono Público</label>
+                                    <input
+                                        type="text"
+                                        x-model="publicContactNumbers"
+                                        placeholder="Ej: +54 9 341..."
+                                        class="w-full bg-transparent border-2 border-white/20 focus:border-white outline-none px-4 py-4 font-bold text-sm tracking-widest transition-colors mb-4"
+                                    />
+                                    
+                                    <label class="flex items-center gap-3 cursor-pointer text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">
+                                        <!-- Usamos un checkbox normal que se parece a un switch brutalista -->
+                                        <div class="relative w-12 h-6 border-2 border-white transition-colors duration-200"
+                                            :class="showContactNumbers ? 'bg-white' : 'bg-transparent'">
+                                            <input type="checkbox" x-model="showContactNumbers" class="sr-only">
+                                            <div class="absolute top-0.5 bottom-0.5 w-4 bg-black transition-all duration-200"
+                                                 :class="showContactNumbers ? 'right-0.5' : 'left-0.5 bg-white'"></div>
+                                        </div>
+                                        <span :class="{'text-white': showContactNumbers, 'text-gray-500': !showContactNumbers}">Mostrar Número</span>
+                                    </label>
+
+                                    <button
+                                        @click="updateContact()"
+                                        :disabled="contactLoading"
+                                        class="w-full bg-transparent border-2 border-white text-white py-4 font-black uppercase tracking-widest text-sm hover:bg-white hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        <span x-show="!contactLoading">Guardar Info de Puerta</span>
+                                        <span x-show="contactLoading" class="animate-pulse">Guardando...</span>
+                                    </button>
+                                </div>
+
+                                <div class="border-t border-white/10 my-4"></div>
+
                                 <template x-if="configError">
                                     <p class="text-[10px] font-black uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/10 px-4 py-3" x-text="configError"></p>
                                 </template>
@@ -242,6 +276,9 @@
                 configError: '',
                 configSuccess: '',
                 configLoading: false,
+                contactLoading: false,
+                publicContactNumbers: '',
+                showContactNumbers: false,
 
                 init() {
                     // Restaurar sesión si ya hay token guardado
@@ -251,7 +288,7 @@
                         this.houseId = sessionStorage.getItem('portero_houseId');
                         this.houseLabel = sessionStorage.getItem('portero_houseLabel') || '';
                         this.loggedIn = true;
-                        this.$nextTick(() => this.connectSignalR());
+                        this.$nextTick(() => { this.connectSignalR(); this.fetchPanel(); });
                     }
                 },
 
@@ -281,7 +318,7 @@
                         sessionStorage.setItem('portero_houseLabel', this.houseLabel);
 
                         this.loggedIn = true;
-                        this.$nextTick(() => this.connectSignalR());
+                        this.$nextTick(() => { this.connectSignalR(); this.fetchPanel(); });
 
                     } catch (e) {
                         this.loginError = 'No se pudo conectar al servidor.';
@@ -423,6 +460,59 @@
                         console.error(e);
                     } finally {
                         this.configLoading = false;
+                    }
+                },
+
+                async fetchPanel() {
+                    if (!this.token) return;
+                    try {
+                        const res = await fetch(`${API_BASE}/api/mobile/panel`, {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.residentName = data.residentName || '';
+                            this.houseLabel = data.houseLabel || '';
+                            this.publicContactNumbers = data.publicContactNumbers || '';
+                            this.showContactNumbers = data.showContactNumbers || false;
+                        }
+                    } catch (e) {
+                        console.error('Error fetching panel', e);
+                    }
+                },
+
+                async updateContact() {
+                    this.configError = '';
+                    this.configSuccess = '';
+                    this.contactLoading = true;
+
+                    try {
+                        const res = await fetch(`${API_BASE}/api/mobile/me/house/contact`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.token}`
+                            },
+                            body: JSON.stringify({ 
+                                publicContactNumbers: this.publicContactNumbers,
+                                showContactNumbers: this.showContactNumbers
+                            })
+                        });
+
+                        if (!res.ok) {
+                            this.configError = `Error al guardar contacto.`;
+                            return;
+                        }
+
+                        this.configSuccess = 'Info de portada guardada';
+                        setTimeout(() => {
+                            this.configSuccess = '';
+                        }, 2500);
+
+                    } catch (e) {
+                        this.configError = 'Error de conexión.';
+                    } finally {
+                        this.contactLoading = false;
                     }
                 }
             }

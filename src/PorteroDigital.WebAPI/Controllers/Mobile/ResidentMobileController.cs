@@ -158,6 +158,30 @@ public sealed class ResidentMobileController(IResidentMobileService residentMobi
         return NoContent();
     }
 
+    [HttpPatch("me/house/contact")]
+    public async Task<IActionResult> UpdateHouseContact([FromBody] UpdateHouseContactRequest request, CancellationToken cancellationToken)
+    {
+        var residentId = GetResidentId();
+
+        if (residentId is null)
+        {
+            return Unauthorized();
+        }
+
+        var success = await residentMobileService.UpdateContactConfigAsync(
+            residentId.Value, 
+            request.PublicContactNumbers, 
+            request.ShowContactNumbers, 
+            cancellationToken);
+
+        if (!success)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+
     private Guid? GetResidentId()
     {
         var subject = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
@@ -165,4 +189,5 @@ public sealed class ResidentMobileController(IResidentMobileService residentMobi
     }
 }
 
+public record UpdateHouseContactRequest(string? PublicContactNumbers, bool ShowContactNumbers);
 public record UpdateCredentialsRequest(string CurrentPassword, string? NewEmail, string? NewPassword);

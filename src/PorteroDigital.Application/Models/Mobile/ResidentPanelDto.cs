@@ -8,4 +8,6 @@ public sealed record ResidentPanelDto(
     string HouseLabel,
     bool CameraEnabled,
     string? CameraStreamUrl,
+    string? PublicContactNumbers,
+    bool ShowContactNumbers,
     IReadOnlyList<ResidentVisitHistoryItemDto> RecentVisits);
