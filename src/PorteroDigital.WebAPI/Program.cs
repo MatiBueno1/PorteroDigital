@@ -116,13 +116,16 @@ using (var scope = app.Services.CreateScope())
             dbContext.Database.ProviderName,
             connString?[..Math.Min(60, connString.Length)] + "...");
 
-        dbContext.Database.Migrate();
-        logger.LogInformation("✅ Migraciones aplicadas correctamente.");
+        // Usamos EnsureCreated en lugar de Migrate porque las carpetas de migraciones
+        // fueron creadas con SQLite y fallan en Postgres al tener tipos como "TEXT".
+        // EnsureCreated crea el esquema base de 0 perfectamente para cualquier DB.
+        dbContext.Database.EnsureCreated();
+        logger.LogInformation("✅ Base de datos inicializada correctamente (EnsureCreated).");
     }
     catch (Exception ex)
     {
         logger.LogCritical(ex,
-            "❌ Error al aplicar migraciones. El app arrancó igual. Revisar connection string y configuración de DB.");
+            "❌ Error al inicializar base de datos. El app arrancó igual. Revisar connection string y configuración de DB.");
         // No se hace throw: el app arranca para que Render lo vea como 'live'
         // y los logs muestren el error real.
     }
