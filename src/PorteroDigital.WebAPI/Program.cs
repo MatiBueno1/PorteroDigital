@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.IdentityModel.Tokens;
 using PorteroDigital.Infrastructure;
 using PorteroDigital.Infrastructure.Persistence;
@@ -116,16 +117,28 @@ using (var scope = app.Services.CreateScope())
             dbContext.Database.ProviderName,
             connString?[..Math.Min(60, connString.Length)] + "...");
 
-        // Usamos EnsureCreated en lugar de Migrate porque las carpetas de migraciones
-        // fueron creadas con SQLite y fallan en Postgres al tener tipos como "TEXT".
-        // EnsureCreated crea el esquema base de 0 perfectamente para cualquier DB.
-        dbContext.Database.EnsureCreated();
-        logger.LogInformation("✅ Base de datos inicializada correctamente (EnsureCreated).");
+        // EnsureCreated falla en proveedores de nube como Neon porque detecta
+        // tablas nativas del sistema, asume que la DB ya está creada y no hace nada.
+        // Solución robusta: intentamos consultar nuestra tabla, si falla, forzamos creación.
+        try
+        {
+            dbContext.Houses.Any();
+            logger.LogInformation("✅ Base de datos ya estaba inicializada.");
+        }
+        catch
+        {
+            var dbCreator = dbContext.Database.GetService<Microsoft.EntityFrameworkCore.Infrastructure.IDatabaseCreator>() as Microsoft.EntityFrameworkCore.Storage.IRelationalDatabaseCreator;
+            if (dbCreator != null)
+            {
+                dbCreator.CreateTables();
+                logger.LogInformation("✅ Tablas creadas forzadamente de cero.");
+            }
+        }
     }
     catch (Exception ex)
     {
         logger.LogCritical(ex,
-            "❌ Error al inicializar base de datos. El app arrancó igual. Revisar connection string y configuración de DB.");
+            "❌ Error crítico en DB. El app arrancó igual. Revisar connection string.");
         // No se hace throw: el app arranca para que Render lo vea como 'live'
         // y los logs muestren el error real.
     }
@@ -141,22 +154,22 @@ app.MapGet("/test-db", async (PorteroDigitalDbContext db, CancellationToken ct) 
         var connStr = db.Database.GetConnectionString();
         var canConnect = await db.Database.CanConnectAsync(ct);
         
-        // Attempt to run EnsureCreated to see what exactly fails
-        string ensureCreatedResult = "Not attempted";
-        try {
-            var created = await db.Database.EnsureCreatedAsync(ct);
-            ensureCreatedResult = created ? "Created new schema" : "Database already exists or no action taken";
-        } catch (Exception e) {
-            ensureCreatedResult = "Failed: " + e.Message;
-            return Results.Problem(detail: e.ToString(), title: "EnsureCreated Failed");
+        var tables = new List<string>();
+        using (var command = db.Database.GetDbConnection().CreateCommand())
+        {
+            command.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+            await db.Database.OpenConnectionAsync(ct);
+            using var result = await command.ExecuteReaderAsync(ct);
+            while (await result.ReadAsync(ct))
+            {
+                tables.Add(result.GetString(0));
+            }
         }
-
-        var activeHouses = await db.Houses.CountAsync(ct);
+        
         return Results.Ok(new { 
             CanConnect = canConnect, 
-            EnsureCreated = ensureCreatedResult,
             Provider = db.Database.ProviderName, 
-            HousesCount = activeHouses,
+            Tables = tables,
             ConnectionStringStart = connStr?[..Math.Min(60, connStr.Length)] + "..."
         });
     }
